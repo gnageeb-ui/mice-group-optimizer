@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mice Luminescence Group Optimizer</title>
+  <style>
+    :root { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    body { margin: 24px; max-width: 1000px; }
+    h1 { font-size: 20px; margin: 0 0 16px; }
+    .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+    textarea { width: 100%; min-height: 240px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; }
+    label { display:block; font-size: 12px; margin: 10px 0 6px; color:#333; }
+    input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
+    button.primary { background: #e6f0ff; border-color:#2c6bed; }
+    button:disabled { opacity: 0.6; cursor:not-allowed; }
+    pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; padding: 12px; border-radius: 12px; }
+    .error { color: #b00020; }
+    .ok { color: #0a7a2f; }
+    .muted { color:#666; font-size:12px; }
+    .mono { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <h1>Mice Luminescence Group Optimizer</h1>
+
+  <div class="grid">
+    <div class="card">
+      <label for="data">Paste Data (Tab or Comma Delimited):</label>
+      <textarea id="data" placeholder="Example:
+050, 1.2e6
+948, 7.1e6
+949, 1.2e6"></textarea>
+      <div class="muted">Format per line: <b>mouse_id, signal</b> (comma or tab). Scientific notation allowed (e.g., 1.2e6).</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Lower Fluorescence Limit</label>
+          <input id="lower" type="number" value="200000" />
+        </div>
+        <div>
+          <label>Upper Fluorescence Limit</label>
+          <input id="upper" type="number" value="7500000" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Number of Groups</label>
+          <input id="k" type="number" value="6" min="1" />
+        </div>
+        <div>
+          <label>Mice per Group</label>
+          <input id="m" type="number" value="5" min="1" />
+        </div>
+      </div>
+
+      <label>Optimization Attempts (more = better)</label>
+      <input id="attempts" type="number" value="4000" min="10" />
+
+      <label>Preference</label>
+      <select id="pref">
+        <option value="similar" selected>Similar group averages</option>
+        <option value="spread">Intentionally spread (high vs low)</option>
+      </select>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
+        <button class="primary" id="optBtn">Optimize Groups</button>
+        <button id="rerunBtn">Rerun Optimization</button>
+      </div>
+
+      <div id="status" class="muted" style="margin-top: 10px;"></div>
+      <div id="errors" class="error mono" style="margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <h2 style="font-size:16px; margin-top:18px;">Optimized Group Assignments</h2>
+  <pre id="out" class="mono"></pre>
+
+<script>
+/**
+ * Parsing
+ */
+function parseValue(raw) {
+  // Allow commas in numbers, spaces, and scientific notation.
+  // Examples: "1.2e6", "920000", "9.2e5"
+  const s = raw.trim().replace(/,/g, "");
+  if (!s) return NaN;
+  const v = Number(s);
+  return Number.isFinite(v) ? v : NaN;
+}
+
+function parseInput(text) {
+  const lines = text.split(/\r?\n/);
+  const items = [];
+  const invalidRows = [];
+
+  let rowIdx = 0;
+  for (const line of lines) {
+    rowIdx += 1;
+    const trimmed = line.trim();
+    if (!trimmed) continue; // ignore blank lines
+
+    // split by comma OR tab (or multiple spaces as a fallback)
+    let parts = trimmed.split("\t").map(x => x.trim()).filter(Boolean);
+    if (parts.length < 2) {
+      parts = trimmed.split(",").map(x => x.trim()).filter(Boolean);
+    }
+    if (parts.length < 2) {
+      // last fallback: multiple spaces
+      parts = trimmed.split(/\s{2,}/).map(x => x.trim()).filter(Boolean);
+    }
+
+    if (parts.length < 2) {
+      invalidRows.push({ row: rowIdx, line });
+      continue;
+    }
+
+    const mouse = parts[0];
+    const val = parseValue(parts[1]);
+    if (!mouse || !Number.isFinite(val)) {
+      invalidRows.push({ row: rowIdx, line });
+      continue;
+    }
+    items.push({ mouse, value: val });
+  }
+
+  return { items, invalidRows };
+}
+
+/**
+ * Optimization objective: make group sums close.
+ * Score = std dev of group sums (lower is better).
+ */
+function scoreGroups(groups) {
+  const sums = groups.map(g => g.sum);
+  const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
+  const varr = sums.reduce((a,s)=>a+(s-mean)*(s-mean),0)/sums.length;
+  return Math.sqrt(varr);
+}
+
+/**
+ * Greedy initializer: sort high->low and place each into the group
+ * with the currently lowest sum that still has capacity.
+ */
+function greedyAssign(items, k, m, preferSimilar=true) {
+  const groups = Array.from({length:k}, (_,i)=>({ idx:i+1, items:[], sum:0 }));
+  const sorted = [...items].sort((a,b)=>b.value-a.value);
+
+  for (const it of sorted) {
+    // Candidate groups with remaining capacity
+    const candidates = groups.filter(g => g.items.length < m);
+    if (candidates.length === 0) return null;
+
+    // For "similar": put into currently LOWEST sum group
+    // For "spread": alternate high into highest, then lowest (creates separation)
+    let target;
+    if (preferSimilar) {
+      target = candidates.reduce((best,g)=> g.sum < best.sum ? g : best, candidates[0]);
+    } else {
+      target = candidates.reduce((best,g)=> g.sum > best.sum ? g : best, candidates[0]);
+    }
+    target.items.push(it);
+    target.sum += it.value;
+  }
+
+  // Ensure all groups exact size m (should be if items count = k*m)
+  if (!groups.every(g => g.items.length === m)) return null;
+  return groups;
+}
+
+/**
+ * Randomized restart:
+ * - Shuffle items
+ * - Do greedy assignment on that order (still using value-based placement)
+ * This often improves vs one deterministic run.
+ */
+function optimize(items, k, m, attempts, preferSimilar=true) {
+  const N = k * m;
+  if (items.length !== N) {
+    throw new Error(`Need exactly ${N} usable entries for ${k} groups of ${m}. Got ${items.length}.`);
+  }
+
+  let best = null;
+  let bestScore = Infinity;
+
+  // Always include the pure greedy on sorted list
+  const base = greedyAssign(items, k, m, preferSimilar);
+  if (base) {
+    const s = scoreGroups(base);
+    best = base; bestScore = s;
+  }
+
+  // Random restarts
+  for (let t = 0; t < attempts; t++) {
+    // Fisher-Yates shuffle copy
+    const shuffled = items.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    // Use greedy placement but iterate in shuffled order:
+    // place each item into lowest-sum group (or highest for spread mode)
+    const groups = Array.from({length:k}, (_,i)=>({ idx:i+1, items:[], sum:0 }));
+    for (const it of shuffled) {
+      const candidates = groups.filter(g => g.items.length < m);
+      let target;
+      if (preferSimilar) {
+        target = candidates.reduce((best,g)=> g.sum < best.sum ? g : best, candidates[0]);
+      } else {
+        target = candidates.reduce((best,g)=> g.sum > best.sum ? g : best, candidates[0]);
+      }
+      target.items.push(it);
+      target.sum += it.value;
+    }
+    const s = scoreGroups(groups);
+    if (s < bestScore) { bestScore = s; best = groups; }
+  }
+
+  return { best, bestScore };
+}
+
+function formatSci(x) {
+  // Pretty scientific formatting similar to your screenshot
+  if (x === 0) return "0";
+  const abs = Math.abs(x);
+  if (abs >= 1e6 || abs < 1e-2) return x.toExponential(2).replace("e+", "e");
+  return Math.round(x).toLocaleString();
+}
+
+function render(groups) {
+  // sort each group by value desc for readability
+  const lines = [];
+  const sums = groups.map(g => g.sum);
+  const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
+
+  groups.forEach(g => {
+    const avg = g.sum / g.items.length;
+    lines.push(`Group ${g.idx} (Avg: ${formatSci(avg)} | Sum: ${formatSci(g.sum)}):`);
+    const sorted = [...g.items].sort((a,b)=>b.value-a.value);
+    for (const it of sorted) lines.push(`  ${it.mouse}: ${formatSci(it.value)}`);
+    lines.push("");
+  });
+
+  // Summary stats
+  const minSum = Math.min(...sums), maxSum = Math.max(...sums);
+  lines.unshift(
+    `Summary: target mean sum = ${formatSci(mean)} | min sum = ${formatSci(minSum)} | max sum = ${formatSci(maxSum)} | spread = ${formatSci(maxSum - minSum)}\n`
+  );
+
+  return lines.join("\n");
+}
+
+function run(isRerun=false) {
+  const data = document.getElementById("data").value;
+  const lower = Number(document.getElementById("lower").value);
+  const upper = Number(document.getElementById("upper").value);
+  const k = Number(document.getElementById("k").value);
+  const m = Number(document.getElementById("m").value);
+  const attemptsBase = Number(document.getElementById("attempts").value);
+  const pref = document.getElementById("pref").value;
+  const preferSimilar = (pref === "similar");
+
+  const statusEl = document.getElementById("status");
+  const errorsEl = document.getElementById("errors");
+  const outEl = document.getElementById("out");
+
+  errorsEl.textContent = "";
+  outEl.textContent = "";
+
+  const { items, invalidRows } = parseInput(data);
+
+  // Filter by fluorescence limits
+  const usable = items.filter(x => x.value >= lower && x.value <= upper);
+
+  // show invalid row messages like your screenshot
+  const errLines = [];
+  for (const r of invalidRows) {
+    errLines.push(`Invalid row ${r.row}: '${r.line}'`);
+  }
+  if (invalidRows.length > 0) errLines.push("");
+
+  errLines.push(`${usable.length} usable entries (between ${lower} and ${upper}).`);
+  errorsEl.textContent = errLines.join("\n");
+
+  const needed = k * m;
+  if (usable.length !== needed) {
+    statusEl.innerHTML = `<span class="error">Need exactly ${needed} usable entries for ${k} groups of ${m}. You have ${usable.length} usable after filtering.</span>`;
+    return;
+  }
+
+  const attempts = isRerun ? Math.max(attemptsBase * 3, 10000) : attemptsBase;
+
+  statusEl.innerHTML = `Optimizing… attempts = ${attempts.toLocaleString()} | preference = ${preferSimilar ? "Similar" : "Spread"}`;
+
+  // Run optimization
+  let result;
+  try {
+    result = optimize(usable, k, m, attempts, preferSimilar);
+  } catch (e) {
+    statusEl.innerHTML = `<span class="error">${e.message}</span>`;
+    return;
+  }
+
+  outEl.textContent = render(result.best);
+  statusEl.innerHTML = `<span class="ok">Done.</span> StdDev(group sums) = ${formatSci(result.bestScore)} | attempts = ${attempts.toLocaleString()}`;
+}
+
+document.getElementById("optBtn").addEventListener("click", () => run(false));
+document.getElementById("rerunBtn").addEventListener("click", () => run(true));
+</script>
+</body>
+</html>
