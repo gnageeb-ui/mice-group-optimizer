@@ -23,7 +23,7 @@
   .ok { color: #0a7a2f; }
   .mono { font-variant-numeric: tabular-nums; }
 
-  /* Big Sirius banner */
+  /* High-take banner (Sirius) */
   .banner {
     display: none;
     margin-top: 14px;
@@ -60,6 +60,37 @@
     animation: shimmer 1200ms ease-in-out infinite;
   }
 
+  /* Low-take banner (big photo + warning) */
+  .badBanner {
+    display: none;
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #ffd2d2;
+    background: linear-gradient(180deg, #fff3f3, #ffffff);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+  .badBanner.show {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 16px;
+    align-items: center;
+    animation: slideIn 520ms cubic-bezier(.2,.9,.25,1) both;
+  }
+  .badPhoto {
+    width: 220px;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 2px solid #222;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+    animation: pop 700ms cubic-bezier(.15,1.2,.25,1) both;
+  }
+  .badTitle { font-size: 16px; font-weight: 900; margin: 0 0 6px; }
+  .badText { margin: 0; font-size: 13px; color: #3a1d1d; line-height: 1.35; }
+
   /* Confetti canvas overlay */
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
 
@@ -67,7 +98,6 @@
   @keyframes pop { 0% { transform: scale(0.92); } 60% { transform: scale(1.04); } 100% { transform: scale(1.0); } }
   @keyframes shimmer { 0%,100% { transform: translateY(0); opacity: 0.95; } 50% { transform: translateY(-2px); opacity: 1; } }
 
-  /* Limit lists */
   .limitBox {
     margin-top: 10px;
     padding: 10px;
@@ -78,7 +108,6 @@
     white-space: pre-wrap;
     line-height: 1.35;
   }
-  .limitTitle { font-weight: 800; margin-bottom: 6px; }
 </style>
 </head>
 
@@ -92,14 +121,25 @@
     <label>Paste Data (mouse_id, value):</label>
     <textarea id="data" placeholder="050, 1.2e6&#10;948, 7.1e6"></textarea>
 
+    <!-- High take-rate banner -->
     <div id="catBanner" class="banner">
-      <img src="IMG_1638.jpg" alt="Sirius the cat" class="catPhoto" />
+      <img id="siriusImg" src="SIRIUS.jpg" alt="Sirius the cat" class="catPhoto" />
       <div>
         <div class="bannerTitle">Wow! You must have a really good take rate.</div>
         <p class="bannerText">My cat <b>Sirius</b> would like to congratulate you! 🐾</p>
         <div class="sparkleRow">✨🎉✨🎊✨</div>
       </div>
     </div>
+
+    <!-- Low take-rate banner -->
+    <div id="badBanner" class="badBanner">
+      <img id="lowTakeImg" src="IMG_1638.jpg" alt="Low take rate" class="badPhoto" />
+      <div>
+        <div class="badTitle">Wow this is a bad take rate!</div>
+        <p class="badText">You implant like Justin :(</p>
+      </div>
+    </div>
+
   </div>
 
   <div class="card">
@@ -134,10 +174,7 @@
     </div>
 
     <div id="status" class="mono" style="margin-top:10px;"></div>
-
-    <!-- NEW: a dedicated box that always reports usable + which mice were out of bounds -->
     <div id="limitsReport" class="limitBox"></div>
-
     <div id="invalidReport" class="limitBox" style="display:none; border-color:#ffd2d2; background:#fff6f6;"></div>
   </div>
 </div>
@@ -158,20 +195,17 @@ function parseInput(text) {
   const lines = text.split(/\r?\n/);
   const items = [];
   const invalid = [];
-
   let idx = 0;
+
   for (const line of lines) {
     idx++;
     const t = line.trim();
     if (!t) continue;
 
-    // comma first, then tab
     let parts = t.split(",").map(x => x.trim());
     if (parts.length < 2) parts = t.split("\t").map(x => x.trim());
-
     if (parts.length < 2 || !parts[0]) { invalid.push(idx); continue; }
 
-    // allow 1.2e6 etc; strip commas
     const val = Number(String(parts[1]).replace(/,/g, ""));
     if (!Number.isFinite(val)) { invalid.push(idx); continue; }
 
@@ -203,8 +237,7 @@ function assign(items,k,m){
 function optimize(items,k,m,attempts){
   let best=null,bestScore=Infinity;
 
-  // baseline
-  {
+  { // baseline
     const g = assign(items, k, m);
     const s = score(g);
     best=g; bestScore=s;
@@ -256,7 +289,6 @@ function trimToNeeded(usable, k, m, attempts){
     pool = pool.filter(x => x !== bestCand);
     dropped.push(bestCand);
   }
-
   return { kept: pool, dropped };
 }
 
@@ -299,7 +331,6 @@ resizeConfetti();
 function burstConfetti(){
   const originX = window.innerWidth * 0.35;
   const originY = 120;
-
   const n = 180;
   const colors = ["#ff4d4d","#ffb84d","#ffe84d","#4dff88","#4dd2ff","#8a5cff","#ff4dd2"];
 
@@ -318,7 +349,6 @@ function burstConfetti(){
       color: colors[Math.floor(Math.random()*colors.length)]
     });
   }
-
   if(!confettiRAF) animateConfetti();
 }
 
@@ -327,7 +357,6 @@ function animateConfetti(){
   ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
 
   confetti = confetti.filter(p => p.life < p.ttl);
-
   for(const p of confetti){
     p.life += 1;
     p.vy += p.g;
@@ -344,7 +373,6 @@ function animateConfetti(){
     ctx.fillRect(-p.s/2, -p.s/2, p.s, p.s*0.7);
     ctx.restore();
   }
-
   ctx.globalAlpha = 1;
 
   if(confetti.length === 0){
@@ -354,7 +382,7 @@ function animateConfetti(){
   }
 }
 
-/* ---------- Limits reporting (NEW) ---------- */
+/* ---------- Limits reporting (always list who is out of bounds) ---------- */
 function buildLimitReport(items, lower, upper){
   const below = items.filter(x => x.value < lower).sort((a,b)=>a.value-b.value);
   const above = items.filter(x => x.value > upper).sort((a,b)=>b.value-a.value);
@@ -364,27 +392,23 @@ function buildLimitReport(items, lower, upper){
   report += `Parsed mice: ${items.length}\n`;
   report += `Usable (between ${lower} and ${upper}): ${usable.length}\n`;
 
-  if(below.length){
-    report += `\nBelow minimum (${lower}) → ${below.length}:\n`;
-    report += below.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n");
-    report += "\n";
-  } else {
-    report += `\nBelow minimum (${lower}) → 0\n`;
+  if(items.length > 0){
+    const passMin = items.filter(x => x.value >= lower).length;
+    const takeRate = passMin / items.length;
+    report += `Take rate (>= min only): ${(takeRate*100).toFixed(1)}%\n`;
   }
 
-  if(above.length){
-    report += `\nAbove maximum (${upper}) → ${above.length}:\n`;
-    report += above.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n");
-    report += "\n";
-  } else {
-    report += `\nAbove maximum (${upper}) → 0\n`;
-  }
+  report += `\nBelow minimum (${lower}) → ${below.length}:\n`;
+  report += below.length ? below.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n") : "  (none)";
+  report += `\n\nAbove maximum (${upper}) → ${above.length}:\n`;
+  report += above.length ? above.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n") : "  (none)";
+  report += "\n";
 
   return { report, usableCount: usable.length };
 }
 
 /* ---------- Main ---------- */
-let lastEliteState = false;
+let lastPerfectState = false;
 
 function run(isRerun){
   const lower = Number(document.getElementById("lower").value);
@@ -406,14 +430,22 @@ function run(isRerun){
 
   const { items, invalid } = parseInput(document.getElementById("data").value);
 
-  // Elite: all parsed mice are >= lower
-  const elite = items.length > 0 && items.every(x => x.value >= lower);
-  document.getElementById("catBanner").classList.toggle("show", elite);
+  // take rate = fraction >= min (lower)
+  const passMin = items.filter(x => x.value >= lower).length;
+  const takeRate = items.length ? (passMin / items.length) : 0;
 
-  if(elite && !lastEliteState) burstConfetti();
-  lastEliteState = elite;
+  // show banners:
+  const perfect = items.length > 0 && takeRate === 1;   // 100%
+  const bad = items.length > 0 && takeRate < 0.80;      // <80%
 
-  // NEW: Always show usable count + which mice are below/above limits (with values)
+  document.getElementById("catBanner").classList.toggle("show", perfect);
+  document.getElementById("badBanner").classList.toggle("show", bad);
+
+  // confetti on transition into perfect
+  if(perfect && !lastPerfectState) burstConfetti();
+  lastPerfectState = perfect;
+
+  // always show bounds report + IDs/values
   const { report, usableCount } = buildLimitReport(items, lower, upper);
   limitsEl.textContent = report;
 
