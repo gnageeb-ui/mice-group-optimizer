@@ -1,399 +1,252 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mice Luminescence Group Optimizer</title>
-  <style>
-    :root { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    body { margin: 24px; max-width: 1100px; }
-    h1 { font-size: 20px; margin: 0 0 16px; }
-    h2 { font-size: 16px; margin: 18px 0 10px; }
-    .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; align-items: start; }
-    textarea { width: 100%; min-height: 260px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; background: white; }
-    label { display:block; font-size: 12px; margin: 10px 0 6px; color:#333; }
-    input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
-    button.primary { background: #e6f0ff; border-color:#2c6bed; }
-    button:disabled { opacity: 0.6; cursor:not-allowed; }
-    pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; padding: 12px; border-radius: 12px; }
-    .error { color: #b00020; }
-    .ok { color: #0a7a2f; }
-    .muted { color:#666; font-size:12px; }
-    .mono { font-variant-numeric: tabular-nums; }
-    .footerNote { margin-top: 10px; font-size: 12px; color:#555; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mice Luminescence Group Optimizer</title>
+
+<style>
+:root { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
+body { margin: 24px; max-width: 1100px; }
+h1 { font-size: 20px; margin-bottom: 16px; }
+h2 { font-size: 16px; margin: 18px 0 10px; }
+.grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+textarea { width: 100%; min-height: 260px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
+.card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; background: white; }
+label { display:block; font-size: 12px; margin: 10px 0 6px; }
+input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+.row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
+button.primary { background: #e6f0ff; border-color:#2c6bed; }
+pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; padding: 12px; border-radius: 12px; }
+.error { color: #b00020; }
+.ok { color: #0a7a2f; }
+.mono { font-variant-numeric: tabular-nums; }
+
+.banner {
+  display: none;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #cfe8cf;
+  background: #f2fbf2;
+  align-items: center;
+  gap: 12px;
+  grid-template-columns: 90px 1fr;
+}
+
+.banner.show { display: grid; }
+
+.catPhoto{
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid #333;
+}
+</style>
 </head>
+
 <body>
-  <h1>Mice Luminescence Group Optimizer</h1>
 
-  <div class="grid">
-    <div class="card">
-      <label for="data">Paste Data (Tab or Comma Delimited):</label>
-      <textarea id="data" placeholder="Example:
-050, 1.2e6
-948, 7.1e6
-949, 1.2e6"></textarea>
-      <div class="muted">
-        One mouse per line. Format: <b>mouse_id, signal</b> (comma or tab). Scientific notation OK (e.g., <b>1.2e6</b>).
-      </div>
-      <div class="footerNote">
-        Behavior: if you have <b>more</b> usable mice than needed, the app will automatically drop the most “outlier-like” mice to fit exactly <b>groups × mice/group</b>.
-      </div>
-    </div>
+<h1>Mice Luminescence Group Optimizer</h1>
 
-    <div class="card">
-      <div class="row">
-        <div>
-          <label>Lower Fluorescence Limit</label>
-          <input id="lower" type="number" value="200000" />
-        </div>
-        <div>
-          <label>Upper Fluorescence Limit</label>
-          <input id="upper" type="number" value="7500000" />
-        </div>
-      </div>
+<div class="grid">
 
-      <div class="row">
-        <div>
-          <label>Number of Groups</label>
-          <input id="k" type="number" value="6" min="1" />
-        </div>
-        <div>
-          <label>Mice per Group</label>
-          <input id="m" type="number" value="5" min="1" />
-        </div>
-      </div>
+<div class="card">
+<label>Paste Data (mouse_id, value):</label>
+<textarea id="data"></textarea>
 
-      <label>Optimization Attempts (more = better)</label>
-      <input id="attempts" type="number" value="4000" min="50" />
+<div id="catBanner" class="banner">
+<img src="IMG_1638.jpg" alt="Sirius the cat" class="catPhoto" />
+<div>
+<b>Wow! You must have a really good take rate.</b><br>
+My cat <b>Sirius</b> would like to congratulate you! 🐾
+</div>
+</div>
 
-      <label>Preference</label>
-      <select id="pref">
-        <option value="similar" selected>Similar group averages</option>
-        <option value="spread">Intentionally spread (high vs low)</option>
-      </select>
+</div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
-        <button class="primary" id="optBtn">Optimize Groups</button>
-        <button id="rerunBtn">Rerun Optimization</button>
-      </div>
+<div class="card">
+<div class="row">
+<div>
+<label>Lower Fluorescence Limit</label>
+<input id="lower" type="number" value="200000" />
+</div>
+<div>
+<label>Upper Fluorescence Limit</label>
+<input id="upper" type="number" value="7500000" />
+</div>
+</div>
 
-      <div id="status" class="muted" style="margin-top: 10px;"></div>
-      <div id="errors" class="error mono" style="margin-top: 10px;"></div>
-    </div>
-  </div>
+<div class="row">
+<div>
+<label>Number of Groups</label>
+<input id="k" type="number" value="6" />
+</div>
+<div>
+<label>Mice per Group</label>
+<input id="m" type="number" value="5" />
+</div>
+</div>
 
-  <h2>Optimized Group Assignments</h2>
-  <pre id="out" class="mono"></pre>
+<label>Optimization Attempts</label>
+<input id="attempts" type="number" value="4000" />
+
+<div style="margin-top:12px;">
+<button class="primary" onclick="run(false)">Optimize Groups</button>
+<button onclick="run(true)">Rerun Optimization</button>
+</div>
+
+<div id="status"></div>
+<div id="errors" class="error mono"></div>
+
+</div>
+</div>
+
+<h2>Optimized Groups</h2>
+<pre id="out" class="mono"></pre>
 
 <script>
-/* ------------------------- Parsing ------------------------- */
 
-function parseValue(raw) {
-  const s = raw.trim().replace(/,/g, "");
-  if (!s) return NaN;
-  const v = Number(s);
-  return Number.isFinite(v) ? v : NaN;
-}
+/* ---------- Parsing ---------- */
 
 function parseInput(text) {
   const lines = text.split(/\r?\n/);
   const items = [];
-  const invalidRows = [];
+  const invalid = [];
 
-  let rowIdx = 0;
+  let idx = 0;
   for (const line of lines) {
-    rowIdx += 1;
-    const trimmed = line.trim();
-    if (!trimmed) continue; // ignore blank lines
+    idx++;
+    if (!line.trim()) continue;
 
-    // split by tab OR comma OR multiple spaces
-    let parts = trimmed.split("\t").map(x => x.trim()).filter(Boolean);
-    if (parts.length < 2) parts = trimmed.split(",").map(x => x.trim()).filter(Boolean);
-    if (parts.length < 2) parts = trimmed.split(/\s{2,}/).map(x => x.trim()).filter(Boolean);
+    let parts = line.split(",").map(x=>x.trim());
+    if (parts.length < 2) parts = line.split("\t").map(x=>x.trim());
 
-    if (parts.length < 2) {
-      invalidRows.push({ row: rowIdx, line });
+    if (parts.length < 2 || !parts[0]) {
+      invalid.push(idx);
       continue;
     }
 
-    const mouse = parts[0];
-    const val = parseValue(parts[1]);
-
-    if (!mouse || !Number.isFinite(val)) {
-      invalidRows.push({ row: rowIdx, line });
+    const val = Number(parts[1].replace(/,/g,""));
+    if (!Number.isFinite(val)) {
+      invalid.push(idx);
       continue;
     }
 
-    items.push({ mouse, value: val });
+    items.push({ mouse: parts[0], value: val });
   }
 
-  return { items, invalidRows };
+  return {items, invalid};
 }
 
-/* ------------------------- Formatting ------------------------- */
+/* ---------- Optimization ---------- */
 
-function formatSci(x) {
-  if (x === 0) return "0";
-  const abs = Math.abs(x);
-  if (abs >= 1e6 || abs < 1e-2) return x.toExponential(2).replace("e+", "e");
-  return Math.round(x).toLocaleString();
-}
-
-/* ------------------------- Optimization objective ------------------------- */
-/**
- * We minimize std dev of group sums (smaller = more balanced).
- */
-function scoreGroups(groups) {
-  const sums = groups.map(g => g.sum);
+function score(groups){
+  const sums = groups.map(g=>g.sum);
   const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
-  const varr = sums.reduce((a,s)=>a+(s-mean)*(s-mean),0)/sums.length;
-  return Math.sqrt(varr);
+  return Math.sqrt(sums.reduce((a,s)=>a+(s-mean)**2,0)/sums.length);
 }
 
-/* ------------------------- Assignment core ------------------------- */
+function assign(items,k,m){
+  const groups = Array.from({length:k},(_,i)=>({id:i+1,items:[],sum:0}));
+  const sorted = items.slice().sort((a,b)=>b.value-a.value);
 
-function greedyAssignInOrder(itemsInOrder, k, m, preferSimilar=true) {
-  const groups = Array.from({length:k}, (_,i)=>({ idx:i+1, items:[], sum:0 }));
-
-  for (const it of itemsInOrder) {
-    const candidates = groups.filter(g => g.items.length < m);
-    if (candidates.length === 0) return null;
-
-    let target;
-    if (preferSimilar) {
-      target = candidates.reduce((best,g)=> g.sum < best.sum ? g : best, candidates[0]);
-    } else {
-      target = candidates.reduce((best,g)=> g.sum > best.sum ? g : best, candidates[0]);
-    }
-
+  for(const it of sorted){
+    const target = groups.filter(g=>g.items.length<m)
+      .reduce((best,g)=>g.sum<best.sum?g:best);
     target.items.push(it);
-    target.sum += it.value;
+    target.sum+=it.value;
   }
-
-  if (!groups.every(g => g.items.length === m)) return null;
   return groups;
 }
 
-function fisherYatesShuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+function optimize(items,k,m,attempts){
+  let best=null,bestScore=Infinity;
+
+  for(let i=0;i<attempts;i++){
+    const shuffled = items.slice().sort(()=>Math.random()-0.5);
+    const groups = assign(shuffled,k,m);
+    const s = score(groups);
+    if(s<bestScore){ bestScore=s; best=groups; }
   }
-  return a;
+  return best;
 }
 
-/**
- * Optimize: random restarts + greedy placement.
- * items length must be exactly k*m.
- */
-function optimize(items, k, m, attempts, preferSimilar=true) {
-  const N = k * m;
-  if (items.length !== N) {
-    throw new Error(`Internal error: optimize() needs exactly ${N} items, got ${items.length}.`);
-  }
+/* ---------- Trim extras ---------- */
 
-  let best = null;
-  let bestScore = Infinity;
+function trimExtras(items,k,m){
+  const needed = k*m;
+  if(items.length<=needed) return {kept:items,dropped:[]};
 
-  // Deterministic baseline: process high->low into lowest-sum group
-  const sorted = items.slice().sort((a,b)=>b.value-a.value);
-  const base = greedyAssignInOrder(sorted, k, m, preferSimilar);
-  if (base) {
-    const s = scoreGroups(base);
-    best = base; bestScore = s;
-  }
-
-  for (let t = 0; t < attempts; t++) {
-    const shuffled = fisherYatesShuffle(items);
-    const groups = greedyAssignInOrder(shuffled, k, m, preferSimilar);
-    if (!groups) continue;
-    const s = scoreGroups(groups);
-    if (s < bestScore) { bestScore = s; best = groups; }
-  }
-
-  return { best, bestScore };
+  const sorted = items.slice().sort((a,b)=>Math.abs(a.value)-Math.abs(b.value));
+  const dropped = sorted.slice(0, items.length-needed);
+  const kept = sorted.slice(items.length-needed);
+  return {kept,dropped};
 }
 
-/* ------------------------- Trimming extras (drop outliers) ------------------------- */
+/* ---------- Render ---------- */
 
-function sampleWithoutReplacement(arr, n) {
-  const shuffled = fisherYatesShuffle(arr);
-  return shuffled.slice(0, n);
-}
-
-/**
- * If we have more usable items than needed, automatically drop items
- * that most improve achievable balance.
- *
- * Heuristic:
- * - While pool > needed:
- *   - For each candidate removal, evaluate balance on a subset of size needed (random sample),
- *     then pick the removal yielding the best score.
- *
- * This tends to drop true outliers (very high/low signals) because they force imbalance.
- */
-function trimToNeeded(usable, k, m, attempts, preferSimilar) {
-  const needed = k * m;
-  if (usable.length <= needed) return { kept: usable, dropped: [] };
-
-  let pool = usable.slice();
-  const dropped = [];
-
-  // Keep trimming reasonably fast
-  const trimAttempts = Math.max(300, Math.floor(attempts / 6));
-  const candidateCap = 40; // if pool is large, only consider up to 40 "most extreme" candidates each round
-
-  while (pool.length > needed) {
-    // Identify likely outliers quickly to cut compute:
-    // consider the most extreme high/low candidates by value.
-    const sorted = pool.slice().sort((a,b)=>a.value-b.value);
-    const extremes = [];
-    const take = Math.min(Math.floor(candidateCap/2), Math.floor(sorted.length/2));
-    for (let i = 0; i < take; i++) extremes.push(sorted[i]); // lows
-    for (let i = 0; i < take; i++) extremes.push(sorted[sorted.length-1-i]); // highs
-
-    // If pool is small, just consider all
-    const candidates = (pool.length <= 35) ? pool.slice() : extremes;
-
-    let bestRemovalMouse = null;
-    let bestAfterScore = Infinity;
-
-    for (const cand of candidates) {
-      // Remove cand from pool
-      const candidatePool = pool.filter(x => x !== cand);
-
-      // If still larger than needed, evaluate on random sample of needed
-      const evalSet = (candidatePool.length === needed)
-        ? candidatePool
-        : sampleWithoutReplacement(candidatePool, needed);
-
-      const res = optimize(evalSet, k, m, trimAttempts, preferSimilar);
-      if (res.bestScore < bestAfterScore) {
-        bestAfterScore = res.bestScore;
-        bestRemovalMouse = cand;
-      }
-    }
-
-    // Remove chosen
-    pool = pool.filter(x => x !== bestRemovalMouse);
-    dropped.push(bestRemovalMouse);
-  }
-
-  return { kept: pool, dropped };
-}
-
-/* ------------------------- Rendering ------------------------- */
-
-function render(groups) {
-  const lines = [];
-  const sums = groups.map(g => g.sum);
-  const meanSum = sums.reduce((a,b)=>a+b,0)/sums.length;
-
-  const minSum = Math.min(...sums), maxSum = Math.max(...sums);
-
-  lines.push(
-    `Summary: target mean group-sum = ${formatSci(meanSum)} | min sum = ${formatSci(minSum)} | max sum = ${formatSci(maxSum)} | spread = ${formatSci(maxSum - minSum)}`
-  );
-  lines.push("");
-
-  groups.forEach(g => {
-    const avg = g.sum / g.items.length;
-    lines.push(`Group ${g.idx} (Avg: ${formatSci(avg)} | Sum: ${formatSci(g.sum)}):`);
-    const sorted = g.items.slice().sort((a,b)=>b.value-a.value);
-    for (const it of sorted) lines.push(`  ${it.mouse}: ${formatSci(it.value)}`);
-    lines.push("");
+function render(groups){
+  let out="";
+  groups.forEach(g=>{
+    const avg=g.sum/g.items.length;
+    out+=`Group ${g.id} (Avg ${avg.toExponential(2)}):\n`;
+    g.items.forEach(it=> out+=`  ${it.mouse}: ${it.value.toExponential(2)}\n`);
+    out+="\n";
   });
-
-  return lines.join("\n");
+  return out;
 }
 
-/* ------------------------- Main run ------------------------- */
+/* ---------- Main ---------- */
 
-function run(isRerun=false) {
-  const data = document.getElementById("data").value;
-  const lower = Number(document.getElementById("lower").value);
-  const upper = Number(document.getElementById("upper").value);
-  const k = Number(document.getElementById("k").value);
-  const m = Number(document.getElementById("m").value);
-  const attemptsBase = Number(document.getElementById("attempts").value);
-  const pref = document.getElementById("pref").value;
-  const preferSimilar = (pref === "similar");
+function run(rerun){
+  const lower=Number(document.getElementById("lower").value);
+  const upper=Number(document.getElementById("upper").value);
+  const k=Number(document.getElementById("k").value);
+  const m=Number(document.getElementById("m").value);
+  const attempts=Number(document.getElementById("attempts").value);
 
-  const statusEl = document.getElementById("status");
-  const errorsEl = document.getElementById("errors");
-  const outEl = document.getElementById("out");
+  const {items,invalid}=parseInput(document.getElementById("data").value);
 
-  errorsEl.textContent = "";
-  outEl.textContent = "";
-  statusEl.textContent = "";
+  document.getElementById("errors").innerText=
+    invalid.length?`Invalid rows: ${invalid.join(", ")}`:"";
 
-  const { items, invalidRows } = parseInput(data);
-
-  // filter by limits
-  const usable = items.filter(x => x.value >= lower && x.value <= upper);
-
-  // invalid rows summary
-  const errLines = [];
-  for (const r of invalidRows) errLines.push(`Invalid row ${r.row}: '${r.line}'`);
-  if (invalidRows.length > 0) errLines.push("");
-  errLines.push(`${usable.length} usable entries (between ${lower} and ${upper}).`);
-  errorsEl.textContent = errLines.join("\n");
-
-  const needed = k * m;
-
-  if (usable.length < needed) {
-    statusEl.innerHTML = `<span class="error">Need at least ${needed} usable entries for ${k} groups of ${m}. You only have ${usable.length} usable after filtering.</span>`;
-    return;
-  }
-
-  const attempts = isRerun ? Math.max(attemptsBase * 3, 10000) : attemptsBase;
-
-  statusEl.innerHTML = `Optimizing… attempts = ${attempts.toLocaleString()} | preference = ${preferSimilar ? "Similar" : "Spread"}${usable.length > needed ? " | trimming extras…" : ""}`;
-
-  // Trim extras if needed
-  let dropped = [];
-  let finalSet = usable;
-
-  if (usable.length > needed) {
-    const trimmed = trimToNeeded(usable, k, m, attempts, preferSimilar);
-    finalSet = trimmed.kept;
-    dropped = trimmed.dropped;
-  }
-
-  // Now optimize on exactly needed items
-  let result;
-  try {
-    result = optimize(finalSet, k, m, attempts, preferSimilar);
-  } catch (e) {
-    statusEl.innerHTML = `<span class="error">${e.message}</span>`;
-    return;
-  }
-
-  // Output
-  if (dropped.length > 0) {
-    const dropLines = dropped
-      .slice()
-      .sort((a,b)=>b.value-a.value)
-      .map(x => `  ${x.mouse}: ${formatSci(x.value)}`);
-    outEl.textContent =
-      `Dropped ${dropped.length} mouse/mice as likely outlier(s) to fit ${k}×${m}:\n` +
-      dropLines.join("\n") +
-      `\n\n` +
-      render(result.best);
+  // Celebration condition
+  const banner=document.getElementById("catBanner");
+  if(items.length>0 && items.every(x=>x.value>=lower)){
+    banner.classList.add("show");
   } else {
-    outEl.textContent = render(result.best);
+    banner.classList.remove("show");
   }
 
-  statusEl.innerHTML = `<span class="ok">Done.</span> StdDev(group sums) = ${formatSci(result.bestScore)} | used ${finalSet.length}/${usable.length} usable`;
+  const usable=items.filter(x=>x.value>=lower && x.value<=upper);
+  const needed=k*m;
+
+  if(usable.length<needed){
+    document.getElementById("status").innerHTML=
+      `<span class="error">Need ${needed} usable mice. You have ${usable.length}.</span>`;
+    return;
+  }
+
+  const {kept,dropped}=trimExtras(usable,k,m);
+
+  const groups=optimize(kept,k,m,attempts);
+
+  let output="";
+  if(dropped.length){
+    output+="Dropped as outliers:\n";
+    dropped.forEach(d=>output+=`  ${d.mouse}: ${d.value.toExponential(2)}\n`);
+    output+="\n";
+  }
+
+  output+=render(groups);
+  document.getElementById("out").innerText=output;
+  document.getElementById("status").innerHTML="<span class='ok'>Done.</span>";
 }
 
-document.getElementById("optBtn").addEventListener("click", () => run(false));
-document.getElementById("rerunBtn").addEventListener("click", () => run(true));
 </script>
+
 </body>
 </html>
