@@ -121,9 +121,9 @@
     <label>Paste Data (mouse_id, value):</label>
     <textarea id="data" placeholder="050, 1.2e6&#10;948, 7.1e6"></textarea>
 
-    <!-- High take-rate banner -->
+    <!-- High take-rate banner (Sirius only) -->
     <div id="catBanner" class="banner">
-      <img id="siriusImg" src="SIRIUS.jpg" alt="Sirius the cat" class="catPhoto" />
+      <img id="siriusImg" src="IMG_1638.jpg" alt="Sirius" class="catPhoto" />
       <div>
         <div class="bannerTitle">Wow! You must have a really good take rate.</div>
         <p class="bannerText">My cat <b>Sirius</b> would like to congratulate you! 🐾</p>
@@ -131,9 +131,10 @@
       </div>
     </div>
 
-    <!-- Low take-rate banner -->
+    <!-- Low take-rate banner (IMG_2361 only) -->
     <div id="badBanner" class="badBanner">
-      <img id="lowTakeImg" src="IMG_1638.jpg" alt="Low take rate" class="badPhoto" />
+      <!-- If your file is IMG_2361.png or .jpeg, change it here -->
+      <img id="lowTakeImg" src="IMG_2361.jpg" alt="Low take rate" class="badPhoto" />
       <div>
         <div class="badTitle">Wow this is a bad take rate!</div>
         <p class="badText">You implant like Justin :(</p>
@@ -312,7 +313,7 @@ function render(groups){
   return out;
 }
 
-/* ---------- Confetti (simple particle burst) ---------- */
+/* ---------- Confetti ---------- */
 const confettiCanvas = document.getElementById("confetti");
 const ctx = confettiCanvas.getContext("2d");
 let confetti = [];
@@ -382,7 +383,7 @@ function animateConfetti(){
   }
 }
 
-/* ---------- Limits reporting (always list who is out of bounds) ---------- */
+/* ---------- Limits reporting ---------- */
 function buildLimitReport(items, lower, upper){
   const below = items.filter(x => x.value < lower).sort((a,b)=>a.value-b.value);
   const above = items.filter(x => x.value > upper).sort((a,b)=>b.value-a.value);
@@ -434,18 +435,16 @@ function run(isRerun){
   const passMin = items.filter(x => x.value >= lower).length;
   const takeRate = items.length ? (passMin / items.length) : 0;
 
-  // show banners:
   const perfect = items.length > 0 && takeRate === 1;   // 100%
   const bad = items.length > 0 && takeRate < 0.80;      // <80%
 
+  // ✅ Sirius only on perfect; IMG_2361 only on bad
   document.getElementById("catBanner").classList.toggle("show", perfect);
   document.getElementById("badBanner").classList.toggle("show", bad);
 
-  // confetti on transition into perfect
   if(perfect && !lastPerfectState) burstConfetti();
   lastPerfectState = perfect;
 
-  // always show bounds report + IDs/values
   const { report, usableCount } = buildLimitReport(items, lower, upper);
   limitsEl.textContent = report;
 
