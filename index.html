@@ -149,7 +149,7 @@
     </div>
 
     <div id="status" class="mono" style="margin-top:10px;"></div>
-    <div id="errors" class="error mono" style="margin-top:10px;"></div>
+    <div id="errors" class="mono" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -169,10 +169,13 @@ function parseInput(text) {
     const t = line.trim();
     if (!t) continue;
 
+    // comma first, then tab
     let parts = t.split(",").map(x => x.trim());
     if (parts.length < 2) parts = t.split("\t").map(x => x.trim());
+
     if (parts.length < 2 || !parts[0]) { invalid.push(idx); continue; }
 
+    // allow 1.2e6 etc; strip commas
     const val = Number(String(parts[1]).replace(/,/g, ""));
     if (!Number.isFinite(val)) { invalid.push(idx); continue; }
 
@@ -305,10 +308,7 @@ window.addEventListener("resize", resizeConfetti);
 resizeConfetti();
 
 function burstConfetti(){
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-
-  const originX = w * 0.35; // roughly near banner area
+  const originX = window.innerWidth * 0.35;
   const originY = 120;
 
   const n = 180;
@@ -374,7 +374,6 @@ function run(isRerun){
   const k = Number(document.getElementById("k").value);
   const m = Number(document.getElementById("m").value);
   const attemptsBase = Number(document.getElementById("attempts").value);
-
   const attempts = isRerun ? Math.max(attemptsBase * 3, 10000) : attemptsBase;
 
   const statusEl = document.getElementById("status");
@@ -386,25 +385,31 @@ function run(isRerun){
   statusEl.textContent = "Working…";
 
   const { items, invalid } = parseInput(document.getElementById("data").value);
-  if(invalid.length){
-    errEl.textContent = "Invalid rows: " + invalid.join(", ");
-  }
 
-  // Elite condition: all parsed mice are >= lower limit
+  // elite condition: all parsed mice are >= lower
   const elite = items.length > 0 && items.every(x => x.value >= lower);
 
   const banner = document.getElementById("catBanner");
   banner.classList.toggle("show", elite);
 
-  // Confetti: fire only when it transitions false -> true
-  if(elite && !lastEliteState){
-    burstConfetti();
-  }
+  if(elite && !lastEliteState) burstConfetti();
   lastEliteState = elite;
 
+  // NEW: count below/above limits
+  const belowLower = items.filter(x => x.value < lower);
+  const aboveUpper = items.filter(x => x.value > upper);
   const usable = items.filter(x => x.value >= lower && x.value <= upper);
-  const needed = k * m;
 
+  // Show counts + invalid rows
+  let summary = `Parsed: ${items.length}\n`;
+  summary += `Usable (${lower}–${upper}): ${usable.length}\n`;
+  summary += `Below lower limit: ${belowLower.length}\n`;
+  summary += `Above upper limit: ${aboveUpper.length}`;
+  if(invalid.length) summary += `\nInvalid rows: ${invalid.join(", ")}`;
+
+  errEl.textContent = summary;
+
+  const needed = k * m;
   if(usable.length < needed){
     statusEl.innerHTML = `<span class="error">Need at least ${needed} usable mice for ${k} groups of ${m}. You have ${usable.length} usable.</span>`;
     return;
