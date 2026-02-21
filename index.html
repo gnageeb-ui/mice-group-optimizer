@@ -6,111 +6,158 @@
 <title>Mice Luminescence Group Optimizer</title>
 
 <style>
-:root { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
-body { margin: 24px; max-width: 1100px; }
-h1 { font-size: 20px; margin-bottom: 16px; }
-h2 { font-size: 16px; margin: 18px 0 10px; }
-.grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
-textarea { width: 100%; min-height: 260px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
-.card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; background: white; }
-label { display:block; font-size: 12px; margin: 10px 0 6px; }
-input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
-.row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
-button.primary { background: #e6f0ff; border-color:#2c6bed; }
-pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; padding: 12px; border-radius: 12px; }
-.error { color: #b00020; }
-.ok { color: #0a7a2f; }
-.mono { font-variant-numeric: tabular-nums; }
+  :root { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
+  body { margin: 24px; max-width: 1100px; }
+  h1 { font-size: 20px; margin-bottom: 16px; }
+  h2 { font-size: 16px; margin: 18px 0 10px; }
+  .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+  textarea { width: 100%; min-height: 260px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
+  .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; background: white; }
+  label { display:block; font-size: 12px; margin: 10px 0 6px; }
+  input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
+  button.primary { background: #e6f0ff; border-color:#2c6bed; }
+  pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; padding: 12px; border-radius: 12px; }
+  .error { color: #b00020; }
+  .ok { color: #0a7a2f; }
+  .mono { font-variant-numeric: tabular-nums; }
 
-.banner {
-  display: none;
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #cfe8cf;
-  background: #f2fbf2;
-  align-items: center;
-  gap: 12px;
-  grid-template-columns: 90px 1fr;
-}
+  /* Big Sirius banner */
+  .banner {
+    display: none;
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #bfe7bf;
+    background: linear-gradient(180deg, #f2fbf2, #ffffff);
+    align-items: center;
+    gap: 16px;
+    grid-template-columns: 170px 1fr;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+  }
 
-.banner.show { display: grid; }
+  .banner.show {
+    display: grid;
+    animation: slideIn 520ms cubic-bezier(.2,.9,.25,1) both;
+  }
 
-.catPhoto{
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 14px;
-  border: 1px solid #333;
-}
+  .catPhoto{
+    width: 170px;
+    height: 170px;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 2px solid #222;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+    animation: pop 700ms cubic-bezier(.15,1.2,.25,1) both;
+  }
+
+  .bannerTitle {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0 0 6px;
+    letter-spacing: 0.2px;
+  }
+  .bannerText {
+    margin: 0;
+    font-size: 13px;
+    color: #234;
+    line-height: 1.35;
+  }
+  .sparkleRow {
+    margin-top: 10px;
+    font-size: 18px;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.12));
+    animation: shimmer 1200ms ease-in-out infinite;
+  }
+
+  /* Confetti canvas overlay */
+  #confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes pop {
+    0%   { transform: scale(0.92); }
+    60%  { transform: scale(1.04); }
+    100% { transform: scale(1.0); }
+  }
+  @keyframes shimmer {
+    0%, 100% { transform: translateY(0); opacity: 0.95; }
+    50% { transform: translateY(-2px); opacity: 1; }
+  }
 </style>
 </head>
 
 <body>
+<canvas id="confetti"></canvas>
 
 <h1>Mice Luminescence Group Optimizer</h1>
 
 <div class="grid">
+  <div class="card">
+    <label>Paste Data (mouse_id, value):</label>
+    <textarea id="data" placeholder="050, 1.2e6&#10;948, 7.1e6"></textarea>
 
-<div class="card">
-<label>Paste Data (mouse_id, value):</label>
-<textarea id="data"></textarea>
+    <div id="catBanner" class="banner">
+      <img src="IMG_1638.jpg" alt="Sirius the cat" class="catPhoto" />
+      <div>
+        <div class="bannerTitle">Wow! You must have a really good take rate.</div>
+        <p class="bannerText">My cat <b>Sirius</b> would like to congratulate you! 🐾</p>
+        <div class="sparkleRow">✨🎉✨🎊✨</div>
+      </div>
+    </div>
+  </div>
 
-<div id="catBanner" class="banner">
-<img src="IMG_1638.jpg" alt="Sirius the cat" class="catPhoto" />
-<div>
-<b>Wow! You must have a really good take rate.</b><br>
-My cat <b>Sirius</b> would like to congratulate you! 🐾
-</div>
-</div>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Lower Fluorescence Limit</label>
+        <input id="lower" type="number" value="200000" />
+      </div>
+      <div>
+        <label>Upper Fluorescence Limit</label>
+        <input id="upper" type="number" value="7500000" />
+      </div>
+    </div>
 
-</div>
+    <div class="row">
+      <div>
+        <label>Number of Groups</label>
+        <input id="k" type="number" value="6" />
+      </div>
+      <div>
+        <label>Mice per Group</label>
+        <input id="m" type="number" value="5" />
+      </div>
+    </div>
 
-<div class="card">
-<div class="row">
-<div>
-<label>Lower Fluorescence Limit</label>
-<input id="lower" type="number" value="200000" />
-</div>
-<div>
-<label>Upper Fluorescence Limit</label>
-<input id="upper" type="number" value="7500000" />
-</div>
-</div>
+    <label>Optimization Attempts</label>
+    <input id="attempts" type="number" value="4000" />
 
-<div class="row">
-<div>
-<label>Number of Groups</label>
-<input id="k" type="number" value="6" />
-</div>
-<div>
-<label>Mice per Group</label>
-<input id="m" type="number" value="5" />
-</div>
-</div>
+    <div style="margin-top:12px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <button class="primary" onclick="run(false)">Optimize Groups</button>
+      <button onclick="run(true)">Rerun Optimization</button>
+    </div>
 
-<label>Optimization Attempts</label>
-<input id="attempts" type="number" value="4000" />
-
-<div style="margin-top:12px;">
-<button class="primary" onclick="run(false)">Optimize Groups</button>
-<button onclick="run(true)">Rerun Optimization</button>
-</div>
-
-<div id="status"></div>
-<div id="errors" class="error mono"></div>
-
-</div>
+    <div id="status" class="mono" style="margin-top:10px;"></div>
+    <div id="errors" class="error mono" style="margin-top:10px;"></div>
+  </div>
 </div>
 
 <h2>Optimized Groups</h2>
 <pre id="out" class="mono"></pre>
 
 <script>
-
 /* ---------- Parsing ---------- */
-
 function parseInput(text) {
   const lines = text.split(/\r?\n/);
   const items = [];
@@ -119,32 +166,24 @@ function parseInput(text) {
   let idx = 0;
   for (const line of lines) {
     idx++;
-    if (!line.trim()) continue;
+    const t = line.trim();
+    if (!t) continue;
 
-    let parts = line.split(",").map(x=>x.trim());
-    if (parts.length < 2) parts = line.split("\t").map(x=>x.trim());
+    let parts = t.split(",").map(x => x.trim());
+    if (parts.length < 2) parts = t.split("\t").map(x => x.trim());
+    if (parts.length < 2 || !parts[0]) { invalid.push(idx); continue; }
 
-    if (parts.length < 2 || !parts[0]) {
-      invalid.push(idx);
-      continue;
-    }
-
-    const val = Number(parts[1].replace(/,/g,""));
-    if (!Number.isFinite(val)) {
-      invalid.push(idx);
-      continue;
-    }
+    const val = Number(String(parts[1]).replace(/,/g, ""));
+    if (!Number.isFinite(val)) { invalid.push(idx); continue; }
 
     items.push({ mouse: parts[0], value: val });
   }
-
-  return {items, invalid};
+  return { items, invalid };
 }
 
-/* ---------- Optimization ---------- */
-
+/* ---------- Optimization (balanced sums) ---------- */
 function score(groups){
-  const sums = groups.map(g=>g.sum);
+  const sums = groups.map(g => g.sum);
   const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
   return Math.sqrt(sums.reduce((a,s)=>a+(s-mean)**2,0)/sums.length);
 }
@@ -154,10 +193,10 @@ function assign(items,k,m){
   const sorted = items.slice().sort((a,b)=>b.value-a.value);
 
   for(const it of sorted){
-    const target = groups.filter(g=>g.items.length<m)
-      .reduce((best,g)=>g.sum<best.sum?g:best);
+    const candidates = groups.filter(g => g.items.length < m);
+    const target = candidates.reduce((best,g)=>g.sum < best.sum ? g : best, candidates[0]);
     target.items.push(it);
-    target.sum+=it.value;
+    target.sum += it.value;
   }
   return groups;
 }
@@ -165,87 +204,232 @@ function assign(items,k,m){
 function optimize(items,k,m,attempts){
   let best=null,bestScore=Infinity;
 
+  // baseline
+  {
+    const g = assign(items, k, m);
+    const s = score(g);
+    best=g; bestScore=s;
+  }
+
   for(let i=0;i<attempts;i++){
     const shuffled = items.slice().sort(()=>Math.random()-0.5);
     const groups = assign(shuffled,k,m);
     const s = score(groups);
-    if(s<bestScore){ bestScore=s; best=groups; }
+    if(s < bestScore){ bestScore=s; best=groups; }
   }
-  return best;
+  return { best, bestScore };
 }
 
-/* ---------- Trim extras ---------- */
+/* ---------- Trimming extras (choose removals that help balance) ---------- */
+function sample(arr, n){
+  const a = arr.slice().sort(()=>Math.random()-0.5);
+  return a.slice(0, n);
+}
 
-function trimExtras(items,k,m){
+function trimToNeeded(usable, k, m, attempts){
   const needed = k*m;
-  if(items.length<=needed) return {kept:items,dropped:[]};
+  if(usable.length <= needed) return { kept: usable, dropped: [] };
 
-  const sorted = items.slice().sort((a,b)=>Math.abs(a.value)-Math.abs(b.value));
-  const dropped = sorted.slice(0, items.length-needed);
-  const kept = sorted.slice(items.length-needed);
-  return {kept,dropped};
+  let pool = usable.slice();
+  const dropped = [];
+  const trimAttempts = Math.max(300, Math.floor(attempts/6));
+
+  while(pool.length > needed){
+    // only consider extreme candidates to keep it fast
+    const sorted = pool.slice().sort((a,b)=>a.value-b.value);
+    const take = Math.min(20, Math.floor(sorted.length/2));
+    const candidates = [];
+    for(let i=0;i<take;i++) candidates.push(sorted[i]);
+    for(let i=0;i<take;i++) candidates.push(sorted[sorted.length-1-i]);
+
+    let bestCand = candidates[0];
+    let bestScore = Infinity;
+
+    for(const cand of candidates){
+      const candidatePool = pool.filter(x => x !== cand);
+      const evalSet = candidatePool.length === needed ? candidatePool : sample(candidatePool, needed);
+      const res = optimize(evalSet, k, m, trimAttempts);
+      if(res.bestScore < bestScore){
+        bestScore = res.bestScore;
+        bestCand = cand;
+      }
+    }
+
+    pool = pool.filter(x => x !== bestCand);
+    dropped.push(bestCand);
+  }
+
+  return { kept: pool, dropped };
 }
 
 /* ---------- Render ---------- */
+function fmt(x){
+  const abs = Math.abs(x);
+  if(abs >= 1e6 || abs < 1e-2) return x.toExponential(2).replace("e+","e");
+  return Math.round(x).toLocaleString();
+}
 
 function render(groups){
-  let out="";
+  const sums = groups.map(g=>g.sum);
+  const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
+  const min = Math.min(...sums);
+  const max = Math.max(...sums);
+
+  let out = `Summary: mean sum = ${fmt(mean)} | min sum = ${fmt(min)} | max sum = ${fmt(max)} | spread = ${fmt(max-min)}\n\n`;
+
   groups.forEach(g=>{
-    const avg=g.sum/g.items.length;
-    out+=`Group ${g.id} (Avg ${avg.toExponential(2)}):\n`;
-    g.items.forEach(it=> out+=`  ${it.mouse}: ${it.value.toExponential(2)}\n`);
-    out+="\n";
+    const avg = g.sum / g.items.length;
+    out += `Group ${g.id} (Avg ${fmt(avg)} | Sum ${fmt(g.sum)}):\n`;
+    g.items.slice().sort((a,b)=>b.value-a.value).forEach(it=>{
+      out += `  ${it.mouse}: ${fmt(it.value)}\n`;
+    });
+    out += "\n";
   });
   return out;
 }
 
-/* ---------- Main ---------- */
+/* ---------- Confetti (simple particle burst) ---------- */
+const confettiCanvas = document.getElementById("confetti");
+const ctx = confettiCanvas.getContext("2d");
+let confetti = [];
+let confettiRAF = null;
 
-function run(rerun){
-  const lower=Number(document.getElementById("lower").value);
-  const upper=Number(document.getElementById("upper").value);
-  const k=Number(document.getElementById("k").value);
-  const m=Number(document.getElementById("m").value);
-  const attempts=Number(document.getElementById("attempts").value);
+function resizeConfetti(){
+  confettiCanvas.width = window.innerWidth * devicePixelRatio;
+  confettiCanvas.height = window.innerHeight * devicePixelRatio;
+  confettiCanvas.style.width = window.innerWidth + "px";
+  confettiCanvas.style.height = window.innerHeight + "px";
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener("resize", resizeConfetti);
+resizeConfetti();
 
-  const {items,invalid}=parseInput(document.getElementById("data").value);
+function burstConfetti(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  document.getElementById("errors").innerText=
-    invalid.length?`Invalid rows: ${invalid.join(", ")}`:"";
+  const originX = w * 0.35; // roughly near banner area
+  const originY = 120;
 
-  // Celebration condition
-  const banner=document.getElementById("catBanner");
-  if(items.length>0 && items.every(x=>x.value>=lower)){
-    banner.classList.add("show");
-  } else {
-    banner.classList.remove("show");
+  const n = 180;
+  const colors = ["#ff4d4d","#ffb84d","#ffe84d","#4dff88","#4dd2ff","#8a5cff","#ff4dd2"];
+
+  for(let i=0;i<n;i++){
+    confetti.push({
+      x: originX + (Math.random()*80 - 40),
+      y: originY + (Math.random()*30 - 15),
+      vx: (Math.random()*10 - 5),
+      vy: -(Math.random()*10 + 6),
+      g: 0.35 + Math.random()*0.18,
+      s: 4 + Math.random()*6,
+      r: Math.random()*Math.PI,
+      vr: (Math.random()*0.25 - 0.125),
+      life: 0,
+      ttl: 160 + Math.random()*60,
+      color: colors[Math.floor(Math.random()*colors.length)]
+    });
   }
 
-  const usable=items.filter(x=>x.value>=lower && x.value<=upper);
-  const needed=k*m;
+  if(!confettiRAF) animateConfetti();
+}
 
-  if(usable.length<needed){
-    document.getElementById("status").innerHTML=
-      `<span class="error">Need ${needed} usable mice. You have ${usable.length}.</span>`;
+function animateConfetti(){
+  confettiRAF = requestAnimationFrame(animateConfetti);
+  ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
+
+  confetti = confetti.filter(p => p.life < p.ttl);
+
+  for(const p of confetti){
+    p.life += 1;
+    p.vy += p.g;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.r += p.vr;
+
+    const alpha = Math.max(0, 1 - (p.life / p.ttl));
+    ctx.globalAlpha = alpha;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.r);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.s/2, -p.s/2, p.s, p.s*0.7);
+    ctx.restore();
+  }
+
+  ctx.globalAlpha = 1;
+
+  if(confetti.length === 0){
+    cancelAnimationFrame(confettiRAF);
+    confettiRAF = null;
+    ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
+  }
+}
+
+/* ---------- Main ---------- */
+let lastEliteState = false;
+
+function run(isRerun){
+  const lower = Number(document.getElementById("lower").value);
+  const upper = Number(document.getElementById("upper").value);
+  const k = Number(document.getElementById("k").value);
+  const m = Number(document.getElementById("m").value);
+  const attemptsBase = Number(document.getElementById("attempts").value);
+
+  const attempts = isRerun ? Math.max(attemptsBase * 3, 10000) : attemptsBase;
+
+  const statusEl = document.getElementById("status");
+  const errEl = document.getElementById("errors");
+  const outEl = document.getElementById("out");
+
+  errEl.textContent = "";
+  outEl.textContent = "";
+  statusEl.textContent = "Working…";
+
+  const { items, invalid } = parseInput(document.getElementById("data").value);
+  if(invalid.length){
+    errEl.textContent = "Invalid rows: " + invalid.join(", ");
+  }
+
+  // Elite condition: all parsed mice are >= lower limit
+  const elite = items.length > 0 && items.every(x => x.value >= lower);
+
+  const banner = document.getElementById("catBanner");
+  banner.classList.toggle("show", elite);
+
+  // Confetti: fire only when it transitions false -> true
+  if(elite && !lastEliteState){
+    burstConfetti();
+  }
+  lastEliteState = elite;
+
+  const usable = items.filter(x => x.value >= lower && x.value <= upper);
+  const needed = k * m;
+
+  if(usable.length < needed){
+    statusEl.innerHTML = `<span class="error">Need at least ${needed} usable mice for ${k} groups of ${m}. You have ${usable.length} usable.</span>`;
     return;
   }
 
-  const {kept,dropped}=trimExtras(usable,k,m);
+  const trimmed = trimToNeeded(usable, k, m, attempts);
+  const kept = trimmed.kept;
+  const dropped = trimmed.dropped;
 
-  const groups=optimize(kept,k,m,attempts);
+  const res = optimize(kept, k, m, attempts);
 
-  let output="";
+  let output = "";
   if(dropped.length){
-    output+="Dropped as outliers:\n";
-    dropped.forEach(d=>output+=`  ${d.mouse}: ${d.value.toExponential(2)}\n`);
-    output+="\n";
+    output += `Dropped ${dropped.length} outlier-like mice to fit ${k}×${m}:\n`;
+    dropped.slice().sort((a,b)=>b.value-a.value).forEach(d=>{
+      output += `  ${d.mouse}: ${fmt(d.value)}\n`;
+    });
+    output += "\n";
   }
 
-  output+=render(groups);
-  document.getElementById("out").innerText=output;
-  document.getElementById("status").innerHTML="<span class='ok'>Done.</span>";
-}
+  output += render(res.best);
+  outEl.textContent = output;
 
+  statusEl.innerHTML = `<span class="ok">Done.</span> StdDev(group sums) = ${fmt(res.bestScore)} | used ${kept.length}/${usable.length} usable`;
+}
 </script>
 
 </body>
