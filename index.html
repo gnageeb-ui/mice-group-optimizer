@@ -14,7 +14,7 @@
   textarea { width: 100%; min-height: 260px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
   .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; background: white; }
   label { display:block; font-size: 12px; margin: 10px 0 6px; }
-  input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+  input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
   .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #999; background: #f2f2f2; cursor:pointer; }
   button.primary { background: #e6f0ff; border-color:#2c6bed; }
@@ -38,12 +38,10 @@
     position: relative;
     overflow: hidden;
   }
-
   .banner.show {
     display: grid;
     animation: slideIn 520ms cubic-bezier(.2,.9,.25,1) both;
   }
-
   .catPhoto{
     width: 170px;
     height: 170px;
@@ -53,19 +51,8 @@
     box-shadow: 0 10px 24px rgba(0,0,0,0.15);
     animation: pop 700ms cubic-bezier(.15,1.2,.25,1) both;
   }
-
-  .bannerTitle {
-    font-size: 16px;
-    font-weight: 800;
-    margin: 0 0 6px;
-    letter-spacing: 0.2px;
-  }
-  .bannerText {
-    margin: 0;
-    font-size: 13px;
-    color: #234;
-    line-height: 1.35;
-  }
+  .bannerTitle { font-size: 16px; font-weight: 800; margin: 0 0 6px; letter-spacing: 0.2px; }
+  .bannerText { margin: 0; font-size: 13px; color: #234; line-height: 1.35; }
   .sparkleRow {
     margin-top: 10px;
     font-size: 18px;
@@ -74,26 +61,24 @@
   }
 
   /* Confetti canvas overlay */
-  #confetti {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 9999;
-  }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
 
-  @keyframes slideIn {
-    from { transform: translateY(10px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
+  @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pop { 0% { transform: scale(0.92); } 60% { transform: scale(1.04); } 100% { transform: scale(1.0); } }
+  @keyframes shimmer { 0%,100% { transform: translateY(0); opacity: 0.95; } 50% { transform: translateY(-2px); opacity: 1; } }
+
+  /* Limit lists */
+  .limitBox {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    background: #fafafa;
+    font-size: 12px;
+    white-space: pre-wrap;
+    line-height: 1.35;
   }
-  @keyframes pop {
-    0%   { transform: scale(0.92); }
-    60%  { transform: scale(1.04); }
-    100% { transform: scale(1.0); }
-  }
-  @keyframes shimmer {
-    0%, 100% { transform: translateY(0); opacity: 0.95; }
-    50% { transform: translateY(-2px); opacity: 1; }
-  }
+  .limitTitle { font-weight: 800; margin-bottom: 6px; }
 </style>
 </head>
 
@@ -149,7 +134,11 @@
     </div>
 
     <div id="status" class="mono" style="margin-top:10px;"></div>
-    <div id="errors" class="mono" style="margin-top:10px;"></div>
+
+    <!-- NEW: a dedicated box that always reports usable + which mice were out of bounds -->
+    <div id="limitsReport" class="limitBox"></div>
+
+    <div id="invalidReport" class="limitBox" style="display:none; border-color:#ffd2d2; background:#fff6f6;"></div>
   </div>
 </div>
 
@@ -157,6 +146,13 @@
 <pre id="out" class="mono"></pre>
 
 <script>
+/* ---------- Formatting ---------- */
+function fmt(x){
+  const abs = Math.abs(x);
+  if(abs >= 1e6 || abs < 1e-2) return x.toExponential(2).replace("e+","e");
+  return Math.round(x).toLocaleString();
+}
+
 /* ---------- Parsing ---------- */
 function parseInput(text) {
   const lines = text.split(/\r?\n/);
@@ -238,7 +234,6 @@ function trimToNeeded(usable, k, m, attempts){
   const trimAttempts = Math.max(300, Math.floor(attempts/6));
 
   while(pool.length > needed){
-    // only consider extreme candidates to keep it fast
     const sorted = pool.slice().sort((a,b)=>a.value-b.value);
     const take = Math.min(20, Math.floor(sorted.length/2));
     const candidates = [];
@@ -266,12 +261,6 @@ function trimToNeeded(usable, k, m, attempts){
 }
 
 /* ---------- Render ---------- */
-function fmt(x){
-  const abs = Math.abs(x);
-  if(abs >= 1e6 || abs < 1e-2) return x.toExponential(2).replace("e+","e");
-  return Math.round(x).toLocaleString();
-}
-
 function render(groups){
   const sums = groups.map(g=>g.sum);
   const mean = sums.reduce((a,b)=>a+b,0)/sums.length;
@@ -365,6 +354,35 @@ function animateConfetti(){
   }
 }
 
+/* ---------- Limits reporting (NEW) ---------- */
+function buildLimitReport(items, lower, upper){
+  const below = items.filter(x => x.value < lower).sort((a,b)=>a.value-b.value);
+  const above = items.filter(x => x.value > upper).sort((a,b)=>b.value-a.value);
+  const usable = items.filter(x => x.value >= lower && x.value <= upper);
+
+  let report = "";
+  report += `Parsed mice: ${items.length}\n`;
+  report += `Usable (between ${lower} and ${upper}): ${usable.length}\n`;
+
+  if(below.length){
+    report += `\nBelow minimum (${lower}) → ${below.length}:\n`;
+    report += below.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n");
+    report += "\n";
+  } else {
+    report += `\nBelow minimum (${lower}) → 0\n`;
+  }
+
+  if(above.length){
+    report += `\nAbove maximum (${upper}) → ${above.length}:\n`;
+    report += above.map(x => `  ${x.mouse}: ${fmt(x.value)}`).join("\n");
+    report += "\n";
+  } else {
+    report += `\nAbove maximum (${upper}) → 0\n`;
+  }
+
+  return { report, usableCount: usable.length };
+}
+
 /* ---------- Main ---------- */
 let lastEliteState = false;
 
@@ -377,41 +395,38 @@ function run(isRerun){
   const attempts = isRerun ? Math.max(attemptsBase * 3, 10000) : attemptsBase;
 
   const statusEl = document.getElementById("status");
-  const errEl = document.getElementById("errors");
+  const limitsEl = document.getElementById("limitsReport");
+  const invalidEl = document.getElementById("invalidReport");
   const outEl = document.getElementById("out");
 
-  errEl.textContent = "";
   outEl.textContent = "";
   statusEl.textContent = "Working…";
+  invalidEl.style.display = "none";
+  invalidEl.textContent = "";
 
   const { items, invalid } = parseInput(document.getElementById("data").value);
 
-  // elite condition: all parsed mice are >= lower
+  // Elite: all parsed mice are >= lower
   const elite = items.length > 0 && items.every(x => x.value >= lower);
-
-  const banner = document.getElementById("catBanner");
-  banner.classList.toggle("show", elite);
+  document.getElementById("catBanner").classList.toggle("show", elite);
 
   if(elite && !lastEliteState) burstConfetti();
   lastEliteState = elite;
 
-  // NEW: count below/above limits
-  const belowLower = items.filter(x => x.value < lower);
-  const aboveUpper = items.filter(x => x.value > upper);
+  // NEW: Always show usable count + which mice are below/above limits (with values)
+  const { report, usableCount } = buildLimitReport(items, lower, upper);
+  limitsEl.textContent = report;
+
+  if(invalid.length){
+    invalidEl.style.display = "block";
+    invalidEl.textContent = `Invalid rows (couldn't parse mouse_id,value): ${invalid.join(", ")}`;
+  }
+
   const usable = items.filter(x => x.value >= lower && x.value <= upper);
-
-  // Show counts + invalid rows
-  let summary = `Parsed: ${items.length}\n`;
-  summary += `Usable (${lower}–${upper}): ${usable.length}\n`;
-  summary += `Below lower limit: ${belowLower.length}\n`;
-  summary += `Above upper limit: ${aboveUpper.length}`;
-  if(invalid.length) summary += `\nInvalid rows: ${invalid.join(", ")}`;
-
-  errEl.textContent = summary;
-
   const needed = k * m;
+
   if(usable.length < needed){
-    statusEl.innerHTML = `<span class="error">Need at least ${needed} usable mice for ${k} groups of ${m}. You have ${usable.length} usable.</span>`;
+    statusEl.innerHTML = `<span class="error">Need at least ${needed} usable mice for ${k} groups of ${m}. You have ${usableCount} usable.</span>`;
     return;
   }
 
